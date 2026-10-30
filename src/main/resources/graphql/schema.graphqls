@@ -120,7 +120,18 @@ type Machine {
     worldPinballSerialNumber: String!
     displayName: String!
     status: String!
+    manufacturer: String
+    manufacturerModelCode: String
+    manufacturerModelName: String
+    manufacturerModelYear: String
+    manufacturerSerialNumber: String
+    manufacturerNotes: String
     machineNotes: String
+    location: String
+    voltage: Int
+    frequencyHz: Int
+    amperage: Float
+    manufacturedDate: String
     registeredAtUtc: String!
     updatedAtUtc: String
 }

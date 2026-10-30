@@ -4,6 +4,7 @@ import com.worldpinball.leaderboard.domain.enums.MachineStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.time.Instant;
@@ -12,6 +13,7 @@ import java.util.UUID;
 @Entity
 @Table(name = "machines")
 @Getter
+@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Machine {
 
@@ -53,6 +55,39 @@ public class Machine {
 
     @Column(name = "machine_notes")
     private String machineNotes;
+
+    @Column(name = "manufacturer", length = 150)
+    private String manufacturer;
+
+    @Column(name = "manufacturer_model_code", length = 50)
+    private String manufacturerModelCode;
+
+    @Column(name = "manufacturer_model_name", length = 150)
+    private String manufacturerModelName;
+
+    @Column(name = "manufacturer_model_year", length = 10)
+    private String manufacturerModelYear;
+
+    @Column(name = "manufacturer_serial_number", length = 100)
+    private String manufacturerSerialNumber;
+
+    @Column(name = "manufacturer_notes", length = 255)
+    private String manufacturerNotes;
+
+    @Column(name = "location", length = 150)
+    private String location;
+
+    @Column(name = "voltage")
+    private Integer voltage;
+
+    @Column(name = "frequency_hz")
+    private Integer frequencyHz;
+
+    @Column(name = "amperage")
+    private java.math.BigDecimal amperage;
+
+    @Column(name = "manufactured_date")
+    private java.time.LocalDate manufacturedDate;
 
     @Column(name = "registered_at_utc", nullable = false)
     private Instant registeredAtUtc;
