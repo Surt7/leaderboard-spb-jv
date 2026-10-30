@@ -268,40 +268,5 @@
         }
       ]
     }
-  ],
-  "users": [
-    {
-      "id": "e2f0d9c1-5b72-4d43-9821-68f764a2b912",
-      "username": "player1",
-      "enabled": true,
-      "email": "player1@worldpinball.local",
-      "firstName": "Philippe",
-      "lastName": "Tar",
-      "credentials": [
-        {
-          "value": "Player123!",
-          "type": "password",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["Player"]
-    },
-    {
-      "id": "f02191ae-39a5-4729-99b4-723f552f290a",
-      "username": "mobile-user",
-      "enabled": true,
-      "email": "mobile@worldpinball.local",
-      "firstName": "Mobile",
-      "lastName": "Player",
-      "emailVerified": true,
-      "credentials": [
-        {
-          "value": "Password123!",
-          "type": "password",
-          "temporary": false
-        }
-      ],
-      "realmRoles": ["Player"]
-    }
   ]
 }
