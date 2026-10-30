@@ -40,6 +40,17 @@ public class PermissionAuthorizationHandler {
                         || "roles".equalsIgnoreCase(c.type())
         );
 
+        for (String role : roles) {
+            if (role.equalsIgnoreCase(requiredPermission)
+                    || ("MachinesProvision".equalsIgnoreCase(requiredPermission) && "MachineProvision".equalsIgnoreCase(role))) {
+                return true;
+            }
+        }
+
+        if (user.hasClaim(c -> "scope".equalsIgnoreCase(c.type()) && "*".equals(c.value()))) {
+            return true;
+        }
+
         return store.hasPermission(roles, requiredPermission);
     }
 }

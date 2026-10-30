@@ -19,6 +19,7 @@ import com.worldpinball.leaderboard.application.features.gamesessions.Public.rec
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.recordballscore.commands.RecordBallScoreCommand;
 import com.worldpinball.leaderboard.application.services.LiveTelemetryService;
 import com.worldpinball.leaderboard.application.services.LobbyNotificationService;
+import com.worldpinball.leaderboard.domain.enums.GameSlotStatus;
 import com.worldpinball.leaderboard.grpc.v1.AddPlayerRequest;
 import com.worldpinball.leaderboard.grpc.v1.AddPlayerResponse;
 import com.worldpinball.leaderboard.grpc.v1.GameSessionServiceGrpc;
@@ -32,6 +33,7 @@ import com.worldpinball.leaderboard.grpc.v1.RecordBallScoreRequest;
 import com.worldpinball.leaderboard.grpc.v1.RecordBallScoreResponse;
 import com.worldpinball.leaderboard.grpc.v1.ScoreDeltaRequest;
 import com.worldpinball.leaderboard.grpc.v1.SessionLobbyResponse;
+import com.worldpinball.leaderboard.grpc.v1.SlotStatus;
 import com.worldpinball.leaderboard.grpc.v1.StreamingSummaryResponse;
 import com.worldpinball.leaderboard.grpc.v1.WatchAllLobbiesRequest;
 import com.worldpinball.leaderboard.grpc.v1.WatchLobbyRequest;
@@ -44,10 +46,13 @@ import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.stream.Collectors;
 
 @GrpcService
 @RequiredArgsConstructor
@@ -55,7 +60,7 @@ import java.util.concurrent.atomic.AtomicReference;
 public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionServiceImplBase {
 
     private static final Set<String> TERMINAL_STATES = Set.of(
-        "STARTED", "INGAME", "ENDED", "CLOSED", "CANCELLED", "ABANDONED", "ABORTED"
+        "ENDED", "CLOSED", "CANCELLED", "ABANDONED", "ABORTED"
     );
 
     private final AddPlayerHandler addPlayerHandler;
@@ -272,20 +277,13 @@ public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionSe
     @Override
     public void watchAllLobbies(WatchAllLobbiesRequest request, StreamObserver<SessionLobbyResponse> responseObserver) {
         log.info("watchAllLobbies: Client subscribed to global stream");
-        // 1. Initial snapshot: send all currently active sessions
-        List<UUID> activeSessionIds = gameSessionRepository.findActiveSessionIds();
-        for (UUID activeId : activeSessionIds) {
-            GetLobbyResult initial = getLobbyHandler.handle(new GetLobbyQuery(activeId));
-            if (initial instanceof GetLobbyResult.Success(SessionLobbyDto lobby)) {
-                responseObserver.onNext(mapToLobbyResponse(lobby));
-            }
-        }
 
-        // 2. Real-time stream
         ServerCallStreamObserver<SessionLobbyResponse> serverObserver = (ServerCallStreamObserver<SessionLobbyResponse>) responseObserver;
         AtomicBoolean completed = new AtomicBoolean(false);
         AtomicReference<Runnable> unsubscribeRef = new AtomicReference<>();
+        Map<String, String> lastFingerprints = new ConcurrentHashMap<>();
 
+        // 1. Subscribe before initial snapshot to prevent race conditions
         Runnable unsub = lobbyNotifier.subscribeAll(sid -> {
             if (completed.get()) {
                 return;
@@ -293,18 +291,17 @@ public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionSe
             log.info("watchAllLobbies: notification received for session {}", sid);
             GetLobbyResult update = getLobbyHandler.handle(new GetLobbyQuery(sid));
             if (update instanceof GetLobbyResult.Success(SessionLobbyDto lobby)) {
-                log.info("watchAllLobbies: broadcasting gRPC update for session {} state={}", sid, lobby.sessionState());
                 synchronized (responseObserver) {
                     if (!completed.get()) {
-                        responseObserver.onNext(mapToLobbyResponse(lobby));
+                        sendIfNotDuplicate(lobby, lastFingerprints, responseObserver);
                     }
                 }
             } else {
                 log.warn("watchAllLobbies: could not resolve lobby for session {}: {}", sid, update);
             }
         });
-
         unsubscribeRef.set(unsub);
+
         serverObserver.setOnCancelHandler(() -> {
             completed.set(true);
             Runnable r = unsubscribeRef.get();
@@ -312,6 +309,39 @@ public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionSe
                 r.run();
             }
         });
+
+        // 2. Initial snapshot: send all currently active sessions
+        List<UUID> activeSessionIds = gameSessionRepository.findActiveSessionIds();
+        for (UUID activeId : activeSessionIds) {
+            if (completed.get()) {
+                break;
+            }
+            GetLobbyResult initial = getLobbyHandler.handle(new GetLobbyQuery(activeId));
+            if (initial instanceof GetLobbyResult.Success(SessionLobbyDto lobby)) {
+                synchronized (responseObserver) {
+                    if (!completed.get()) {
+                        sendIfNotDuplicate(lobby, lastFingerprints, responseObserver);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void sendIfNotDuplicate(
+            SessionLobbyDto lobby,
+            Map<String, String> lastFingerprints,
+            StreamObserver<SessionLobbyResponse> responseObserver
+    ) {
+        SessionLobbyResponse response = mapToLobbyResponse(lobby);
+        String slotsSig = response.getSlotsList().stream()
+                .map(s -> s.getSlotNumber() + ":" + s.getStatus() + ":" + s.getUserId())
+                .collect(Collectors.joining(","));
+        String fingerprint = response.getSessionState() + "_" + slotsSig;
+
+        String previous = lastFingerprints.put(response.getSessionId(), fingerprint);
+        if (!fingerprint.equals(previous)) {
+            responseObserver.onNext(response);
+        }
     }
 
     @Override
@@ -410,9 +440,11 @@ public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionSe
             .setSessionState(lobby.sessionState());
 
         for (LobbySlotDto slot : lobby.slots()) {
+            SlotStatus protoStatus = mapSlotStatus(slot.status());
             var slotBuilder = PlayerSlotInfo.newBuilder()
                 .setSlotNumber(slot.slotNumber())
-                .setIsOccupied(slot.isOccupied());
+                .setIsOccupied(slot.isOccupied())
+                .setStatus(protoStatus);
 
             if (slot.userId() != null) {
                 slotBuilder.setUserId(slot.userId().toString());
@@ -424,6 +456,17 @@ public class GameSessionGrpcService extends GameSessionServiceGrpc.GameSessionSe
         }
 
         return responseBuilder.build();
+    }
+
+    private static SlotStatus mapSlotStatus(GameSlotStatus status) {
+        if (status == null) {
+            return SlotStatus.SLOT_STATUS_OPEN;
+        }
+        return switch (status) {
+            case Open -> SlotStatus.SLOT_STATUS_OPEN;
+            case Occupied -> SlotStatus.SLOT_STATUS_OCCUPIED;
+            case Locked -> SlotStatus.SLOT_STATUS_LOCKED;
+        };
     }
 
     private static boolean isTerminal(String sessionState) {

@@ -1,5 +1,7 @@
 package com.worldpinball.leaderboard.api.controllers.Admin;
 
+import com.worldpinball.leaderboard.application.dtos.FleetStatsDto;
+import com.worldpinball.leaderboard.application.dtos.PagedResponse;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardHandler;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardQuery;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardResult;
@@ -8,6 +10,13 @@ import com.worldpinball.leaderboard.application.features.machines.Admin.getallma
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.GetAllMachinesQuery;
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.GetAllMachinesResult;
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.MachineRowDto;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.GetMachineSecurityHandler;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.GetMachineSecurityResult;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.dtos.MachineSecurityDto;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.queries.GetMachineSecurityQuery;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.GetPagedMachinesHandler;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.GetPagedMachinesResult;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.queries.GetPagedMachinesQuery;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.ProvisionMachineHandler;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.ProvisionMachineResult;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.commands.ProvisionMachineCommand;
@@ -49,6 +58,12 @@ class AdminMachinesControllerTest {
     @Mock
     private GetMachineDashboardHandler getMachineDashboardHandler;
 
+    @Mock
+    private GetMachineSecurityHandler getMachineSecurityHandler;
+
+    @Mock
+    private GetPagedMachinesHandler getPagedMachinesHandler;
+
     private AdminMachinesController sut;
 
     @BeforeEach
@@ -57,7 +72,9 @@ class AdminMachinesControllerTest {
                 getAllMachinesHandler,
                 provisionMachineHandler,
                 reissueEnrollmentTokenHandler,
-                getMachineDashboardHandler
+                getMachineDashboardHandler,
+                getMachineSecurityHandler,
+                getPagedMachinesHandler
         );
     }
 
@@ -155,5 +172,73 @@ class AdminMachinesControllerTest {
         ResponseEntity<?> response = sut.getAllMachines();
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GetMachineSecurity returns 200 OK when machine exists")
+    void getMachineSecurity_whenMachineExists_shouldReturnOk() {
+        UUID machineId = UUID.randomUUID();
+        MachineSecurityDto dto = new MachineSecurityDto(
+                machineId,
+                "WP-00001",
+                "Godzilla #1",
+                1,
+                true,
+                UUID.randomUUID(),
+                "DEVICE-00001",
+                true,
+                "CERT-00001",
+                "THUMBPRINT",
+                "CN=DEVICE-00001",
+                "CN=WorldPinball CA",
+                Instant.now(),
+                Instant.now().plusSeconds(86400),
+                1,
+                false,
+                true,
+                "Active"
+        );
+
+        when(getMachineSecurityHandler.handle(any(GetMachineSecurityQuery.class)))
+                .thenReturn(new GetMachineSecurityResult.Success(dto));
+
+        ResponseEntity<?> response = sut.getMachineSecurity(machineId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(dto);
+    }
+
+    @Test
+    @DisplayName("GetMachineSecurity returns 404 NOT_FOUND when machine does not exist")
+    void getMachineSecurity_whenMachineNotFound_shouldReturnNotFound() {
+        UUID machineId = UUID.randomUUID();
+        when(getMachineSecurityHandler.handle(any(GetMachineSecurityQuery.class)))
+                .thenReturn(new GetMachineSecurityResult.MachineNotFound(machineId));
+
+        ResponseEntity<?> response = sut.getMachineSecurity(machineId);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("GetPagedMachines returns 200 OK with PagedResponse when handler succeeds")
+    void getPagedMachines_whenCalled_shouldReturnOkWithPagedResponse() {
+        PagedResponse<MachineRowDto> page = new PagedResponse<>(
+                List.of(),
+                10,
+                0,
+                1,
+                false,
+                false,
+                null,
+                new FleetStatsDto(0, 0, 0, 0, 0)
+        );
+        when(getPagedMachinesHandler.handle(any(GetPagedMachinesQuery.class)))
+                .thenReturn(new GetPagedMachinesResult.Success(page));
+
+        ResponseEntity<?> response = sut.getPagedMachines(10, null, 1, null);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).isEqualTo(page);
     }
 }

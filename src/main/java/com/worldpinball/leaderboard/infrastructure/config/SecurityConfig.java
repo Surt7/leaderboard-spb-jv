@@ -1,9 +1,16 @@
 package com.worldpinball.leaderboard.infrastructure.config;
 
+import com.worldpinball.leaderboard.infrastructure.security.authentication.ClaimsPrincipal;
+import com.worldpinball.leaderboard.infrastructure.security.authentication.OperatorTokenAuthenticationHandler;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -11,16 +18,28 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.BearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.DefaultBearerTokenResolver;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.filter.OncePerRequestFilter;
 
+import java.io.IOException;
 import java.util.*;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 public class SecurityConfig {
+
+    private final OperatorTokenAuthenticationHandler operatorTokenHandler;
+
+    public SecurityConfig(OperatorTokenAuthenticationHandler operatorTokenHandler) {
+        this.operatorTokenHandler = operatorTokenHandler;
+    }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -51,13 +70,24 @@ public class SecurityConfig {
                                 "/api/v1/ip-licenses/**",
                                 "/api/v1/leaderboards/**"
                         ).permitAll()
-                        // Machine public enrollment
+                        // Machine & Workstation public enrollment
                         .requestMatchers(
-                                "/api/v1/machines/enroll"
+                                "/api/v1/machines/enroll",
+                                "/api/v1/workstations/enroll"
+                        ).permitAll()
+                        // GraphQL endpoint (field-level auth enforced in resolver)
+                        .requestMatchers(
+                                "/graphql"
                         ).permitAll()
                         // Local developer test endpoints
                         .requestMatchers(
                                 "/api/v1/test/**"
+                        ).permitAll()
+                        // Permission-protected admin endpoints evaluated by @RequirePermission AOP aspect
+                        .requestMatchers(
+                                "/api/v1/admin/certificates/**",
+                                "/api/v1/admin/machines/provision",
+                                "/api/v1/admin/machines/*/tokens"
                         ).permitAll()
                         // Admin-only endpoints protected by Keycloak Admin role
                         .requestMatchers(
@@ -66,11 +96,63 @@ public class SecurityConfig {
                         // Allow other endpoints or authenticated where appropriate
                         .anyRequest().permitAll()
                 )
+                .addFilterBefore(operatorTokenAuthenticationFilter(), BearerTokenAuthenticationFilter.class)
                 .oauth2ResourceServer(oauth2 -> oauth2
+                        .bearerTokenResolver(nonOperatorBearerTokenResolver())
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter()))
                 );
 
         return http.build();
+    }
+
+    private BearerTokenResolver nonOperatorBearerTokenResolver() {
+        DefaultBearerTokenResolver delegate = new DefaultBearerTokenResolver();
+        return request -> {
+            String token = delegate.resolve(request);
+            if (token != null && token.regionMatches(true, 0, "wpt_", 0, 4)) {
+                return null;
+            }
+            return token;
+        };
+    }
+
+    private OncePerRequestFilter operatorTokenAuthenticationFilter() {
+        return new OncePerRequestFilter() {
+            @Override
+            protected void doFilterInternal(
+                    HttpServletRequest request,
+                    HttpServletResponse response,
+                    FilterChain filterChain
+            ) throws ServletException, IOException {
+                if (SecurityContextHolder.getContext().getAuthentication() == null) {
+                    String opHeader = request.getHeader(OperatorTokenAuthenticationHandler.HEADER_NAME);
+                    String authHeader = request.getHeader("Authorization");
+                    var result = operatorTokenHandler.authenticate(opHeader, authHeader);
+                    if (result instanceof OperatorTokenAuthenticationHandler.AuthenticateResult.Success s) {
+                        ClaimsPrincipal principal = s.principal();
+                        List<GrantedAuthority> authorities = new ArrayList<>();
+                        for (ClaimsPrincipal.Claim claim : principal.getClaims()) {
+                            if ("scope".equalsIgnoreCase(claim.type())) {
+                                authorities.add(new SimpleGrantedAuthority("SCOPE_" + claim.value()));
+                                if ("*".equals(claim.value())) {
+                                    authorities.add(new SimpleGrantedAuthority("ROLE_Admin"));
+                                    authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+                                    authorities.add(new SimpleGrantedAuthority("Admin"));
+                                }
+                            }
+                        }
+                        String name = principal.findFirst(ClaimsPrincipal.CLAIM_NAME_IDENTIFIER).orElse("operator");
+                        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                name,
+                                null,
+                                authorities
+                        );
+                        SecurityContextHolder.getContext().setAuthentication(auth);
+                    }
+                }
+                filterChain.doFilter(request, response);
+            }
+        };
     }
 
     @Bean

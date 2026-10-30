@@ -1,11 +1,11 @@
 package com.worldpinball.leaderboard.domain.entities;
 
 import com.worldpinball.leaderboard.domain.enums.GameSessionState;
+import com.worldpinball.leaderboard.domain.enums.GameSlotStatus;
 import com.worldpinball.leaderboard.domain.enums.TelemetryMode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -17,7 +17,6 @@ import java.util.UUID;
 @Entity
 @Table(name = "game_sessions")
 @Getter
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GameSession {
 
     public static final class ErrorMessages {
@@ -89,6 +88,50 @@ public class GameSession {
     @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<GameSessionPlayer> players = new ArrayList<>();
 
+    @Transient
+    private final List<GameSlot> slots = new ArrayList<>(4);
+
+    protected GameSession() {
+        for (int i = 1; i <= 4; i++) {
+            this.slots.add(new GameSlot(i));
+        }
+    }
+
+    @Getter
+    public static final class GameSlot {
+        private final int slotNumber;
+        private GameSlotStatus status = GameSlotStatus.Open;
+        private UUID userId;
+        private String guestInitials;
+
+        GameSlot(int slotNumber) {
+            this.slotNumber = slotNumber;
+        }
+
+        void occupy(UUID userId, String initials) {
+            if (this.status == GameSlotStatus.Locked) {
+                throw new IllegalStateException("Locked slot.");
+            }
+            this.status = GameSlotStatus.Occupied;
+            this.userId = userId;
+            this.guestInitials = initials;
+        }
+
+        void lock() {
+            if (this.status == GameSlotStatus.Open) {
+                this.status = GameSlotStatus.Locked;
+            }
+        }
+
+        void free() {
+            if (this.status != GameSlotStatus.Locked) {
+                this.status = GameSlotStatus.Open;
+                this.userId = null;
+                this.guestInitials = null;
+            }
+        }
+    }
+
     public GameSession(
         UUID machineId,
         UUID deviceId,
@@ -98,6 +141,7 @@ public class GameSession {
         Instant startedAtUtc,
         UUID sessionId
     ) {
+        this();
         if (machineId == null) {
             throw new IllegalArgumentException(ErrorMessages.MACHINE_ID);
         }
@@ -129,6 +173,34 @@ public class GameSession {
         return Collections.unmodifiableList(players);
     }
 
+    public List<GameSlot> getSlots() {
+        if (this.slots.isEmpty()) {
+            for (int i = 1; i <= 4; i++) {
+                this.slots.add(new GameSlot(i));
+            }
+        }
+        for (GameSlot slot : this.slots) {
+            GameSessionPlayer player = this.players.stream()
+                .filter(p -> p.getSlotNumber() == slot.getSlotNumber())
+                .findFirst()
+                .orElse(null);
+            if (player != null && slot.getStatus() != GameSlotStatus.Occupied) {
+                slot.status = GameSlotStatus.Occupied;
+                slot.userId = player.getUserId();
+                slot.guestInitials = player.getGuestInitials();
+            } else if (player == null && slot.getStatus() == GameSlotStatus.Occupied) {
+                slot.free();
+            }
+
+            if (player == null
+                && (this.state == GameSessionState.STARTED || this.state == GameSessionState.IN_GAME)
+                && slot.getStatus() == GameSlotStatus.Open) {
+                slot.lock();
+            }
+        }
+        return Collections.unmodifiableList(this.slots);
+    }
+
     // -------------------- Lobby & Matchmaking --------------------
 
     public void addPlayer(int slotNumber, UUID userId) {
@@ -139,9 +211,7 @@ public class GameSession {
         if (this.state != GameSessionState.CREATED
             && this.state != GameSessionState.PENDING
             && this.state != GameSessionState.SEARCHING_PLAYER
-            && this.state != GameSessionState.JOINED
-            && this.state != GameSessionState.STARTED
-            && this.state != GameSessionState.RESUMED) {
+            && this.state != GameSessionState.JOINED) {
             throw new IllegalStateException(ErrorMessages.ADD_PLAYER_NOT_STARTED);
         }
 
@@ -164,6 +234,13 @@ public class GameSession {
         if (userId != null && players.stream().anyMatch(p -> Objects.equals(p.getUserId(), userId))) {
             throw new IllegalStateException(ErrorMessages.USER_ALREADY_REGISTERED);
         }
+
+        getSlots();
+        GameSlot targetSlot = this.slots.stream()
+            .filter(s -> s.getSlotNumber() == slotNumber)
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException(ErrorMessages.INVALID_SLOT_NUMBER));
+        targetSlot.occupy(userId, guestInitials);
 
         GameSessionPlayer player = new GameSessionPlayer(
             this.sessionId,
@@ -192,6 +269,15 @@ public class GameSession {
             .filter(p -> p.getSlotNumber() == slotNumber)
             .findFirst()
             .orElseThrow(() -> new IllegalStateException(ErrorMessages.PLAYER_NOT_FOUND));
+
+        getSlots();
+        GameSlot targetSlot = this.slots.stream()
+            .filter(s -> s.getSlotNumber() == slotNumber)
+            .findFirst()
+            .orElse(null);
+        if (targetSlot != null) {
+            targetSlot.free();
+        }
 
         this.players.remove(player);
 
@@ -236,6 +322,13 @@ public class GameSession {
 
         if (this.players.isEmpty()) {
             throw new IllegalStateException(ErrorMessages.AT_LEAST_ONE_PLAYER_REQUIRED);
+        }
+
+        getSlots();
+        for (GameSlot slot : this.slots) {
+            if (slot.getStatus() == GameSlotStatus.Open) {
+                slot.lock();
+            }
         }
 
         this.startedAtUtc = launchedAtUtc != null ? launchedAtUtc : Instant.now();

@@ -136,8 +136,28 @@ public class EnrollmentToken {
         this.usesCount = 0;
     }
 
+    public void consume(Instant now) {
+        if (now == null) {
+            throw new IllegalArgumentException(ErrorMessages.INVALID_DATE);
+        }
+        if (this.revokedAt != null) {
+            throw new IllegalStateException(ErrorMessages.REVOKED_AT);
+        }
+        if (!now.isBefore(this.expiresAtUtc)) {
+            throw new IllegalStateException(ErrorMessages.EXPIRED_AT);
+        }
+        if (this.usesCount >= this.maxUses) {
+            throw new IllegalStateException(ErrorMessages.ALREADY_CONSUMED);
+        }
+
+        this.usesCount++;
+        if (this.consumedAtUtc == null) {
+            this.consumedAtUtc = now;
+        }
+    }
+
     public void consume(UUID deviceId, Instant now) {
-        if (deviceId == null) {
+        if (deviceId == null || deviceId.equals(new UUID(0L, 0L))) {
             throw new IllegalArgumentException(ErrorMessages.INVALID_DEVICE_ID);
         }
         if (now == null) {

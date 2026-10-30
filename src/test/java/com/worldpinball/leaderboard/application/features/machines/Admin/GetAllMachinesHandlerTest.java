@@ -6,7 +6,9 @@ import com.worldpinball.leaderboard.application.features.machines.Admin.getallma
 import com.worldpinball.leaderboard.domain.entities.IpLicense;
 import com.worldpinball.leaderboard.domain.entities.Machine;
 import com.worldpinball.leaderboard.domain.enums.MachineStatus;
+import com.worldpinball.leaderboard.infrastructure.DeviceCertificateRepository;
 import com.worldpinball.leaderboard.infrastructure.IpLicenseRepository;
+import com.worldpinball.leaderboard.infrastructure.MachineDeviceRepository;
 import com.worldpinball.leaderboard.infrastructure.MachineRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,11 +36,22 @@ class GetAllMachinesHandlerTest {
     @Mock
     private IpLicenseRepository ipLicenseRepository;
 
+    @Mock
+    private MachineDeviceRepository machineDeviceRepository;
+
+    @Mock
+    private DeviceCertificateRepository deviceCertificateRepository;
+
     private GetAllMachinesHandlerImpl sut;
 
     @BeforeEach
     void setUp() {
-        sut = new GetAllMachinesHandlerImpl(machineRepository, ipLicenseRepository);
+        sut = new GetAllMachinesHandlerImpl(
+                machineRepository,
+                ipLicenseRepository,
+                machineDeviceRepository,
+                deviceCertificateRepository
+        );
     }
 
     @Test

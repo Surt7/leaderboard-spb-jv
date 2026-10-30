@@ -73,6 +73,10 @@ public final class FrozenRolePermissionStore implements RolePermissionStore {
         return false;
     }
 
+    public boolean isEmpty() {
+        return rolePermissionsLower.isEmpty();
+    }
+
     @Override
     public Set<String> getPermissions(String role) {
         if (role == null) {

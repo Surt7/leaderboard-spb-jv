@@ -1,6 +1,9 @@
 package com.worldpinball.leaderboard.api.controllers.Admin;
 
 import com.worldpinball.leaderboard.api.filters.idempotency.Idempotent;
+import com.worldpinball.leaderboard.api.security.permissions.Permission;
+import com.worldpinball.leaderboard.api.security.permissions.RequirePermission;
+import com.worldpinball.leaderboard.application.dtos.PagedResponse;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardHandler;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardQuery;
 import com.worldpinball.leaderboard.application.features.leaderboard.Admin.dashboard.GetMachineDashboardResult;
@@ -9,6 +12,13 @@ import com.worldpinball.leaderboard.application.features.machines.Admin.getallma
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.GetAllMachinesQuery;
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.GetAllMachinesResult;
 import com.worldpinball.leaderboard.application.features.machines.Admin.getallmachines.MachineRowDto;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.GetMachineSecurityHandler;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.GetMachineSecurityResult;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.dtos.MachineSecurityDto;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getmachinesecurity.queries.GetMachineSecurityQuery;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.GetPagedMachinesHandler;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.GetPagedMachinesResult;
+import com.worldpinball.leaderboard.application.features.machines.Admin.getpagedmachines.queries.GetPagedMachinesQuery;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.ProvisionMachineHandler;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.ProvisionMachineResult;
 import com.worldpinball.leaderboard.application.features.machines.Admin.provision.commands.ProvisionMachineCommand;
@@ -30,7 +40,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -43,17 +52,23 @@ public class AdminMachinesController {
     private final ProvisionMachineHandler provisionMachineHandler;
     private final ReissueEnrollmentTokenHandler reissueEnrollmentTokenHandler;
     private final GetMachineDashboardHandler getMachineDashboardHandler;
+    private final GetMachineSecurityHandler getMachineSecurityHandler;
+    private final GetPagedMachinesHandler getPagedMachinesHandler;
 
     public AdminMachinesController(
             GetAllMachinesHandler getAllMachinesHandler,
             ProvisionMachineHandler provisionMachineHandler,
             ReissueEnrollmentTokenHandler reissueEnrollmentTokenHandler,
-            GetMachineDashboardHandler getMachineDashboardHandler
+            GetMachineDashboardHandler getMachineDashboardHandler,
+            GetMachineSecurityHandler getMachineSecurityHandler,
+            GetPagedMachinesHandler getPagedMachinesHandler
     ) {
         this.getAllMachinesHandler = getAllMachinesHandler;
         this.provisionMachineHandler = provisionMachineHandler;
         this.reissueEnrollmentTokenHandler = reissueEnrollmentTokenHandler;
         this.getMachineDashboardHandler = getMachineDashboardHandler;
+        this.getMachineSecurityHandler = getMachineSecurityHandler;
+        this.getPagedMachinesHandler = getPagedMachinesHandler;
     }
 
     @GetMapping
@@ -74,6 +89,7 @@ public class AdminMachinesController {
     }
 
     @PostMapping("/provision")
+    @RequirePermission(Permission.MachinesProvision)
     @Idempotent(expirationMinutes = 30)
     @Operation(summary = "Creates a new machine and generates an enrollment token")
     @ApiResponses({
@@ -88,7 +104,9 @@ public class AdminMachinesController {
             @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyHeader,
             Principal principal
     ) {
-        String issuedByUser = principal != null && principal.getName() != null ? principal.getName() : "admin";
+        String issuedByUser = (principal != null && principal.getName() != null && !principal.getName().isBlank())
+                ? principal.getName()
+                : "admin";
 
         UUID idempotencyKey;
         try {
@@ -123,6 +141,7 @@ public class AdminMachinesController {
     }
 
     @PostMapping("/{machineId}/tokens")
+    @RequirePermission(Permission.MachinesReissueToken)
     @Operation(summary = "Reissues a new enrollment token for an existing machine")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Token reissued successfully",
@@ -134,7 +153,9 @@ public class AdminMachinesController {
             @PathVariable UUID machineId,
             Principal principal
     ) {
-        String issuedByUser = principal != null && principal.getName() != null ? principal.getName() : "admin";
+        String issuedByUser = (principal != null && principal.getName() != null && !principal.getName().isBlank())
+                ? principal.getName()
+                : "admin";
 
         ReissueEnrollmentTokenCommand cmd = new ReissueEnrollmentTokenCommand(machineId, issuedByUser);
         ReissueEnrollmentTokenResult result = reissueEnrollmentTokenHandler.handle(cmd);
@@ -164,6 +185,47 @@ public class AdminMachinesController {
             case GetMachineDashboardResult.Success success -> ResponseEntity.ok(success.stats());
             case GetMachineDashboardResult.NotFound notFound -> ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body(Map.of("message", "Machine '" + notFound.machineId() + "' not found."));
+        };
+    }
+
+    @GetMapping("/{machineId}/security")
+    @Operation(summary = "Retrieves cryptographic identity, TPM device and hardware certificate details for a machine")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Security details retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = MachineSecurityDto.class))),
+            @ApiResponse(responseCode = "404", description = "Machine not found")
+    })
+    public ResponseEntity<?> getMachineSecurity(@PathVariable UUID machineId) {
+        GetMachineSecurityResult result = getMachineSecurityHandler.handle(new GetMachineSecurityQuery(machineId));
+
+        return switch (result) {
+            case GetMachineSecurityResult.Success success -> ResponseEntity.ok(success.security());
+            case GetMachineSecurityResult.MachineNotFound notFound -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "Machine '" + notFound.machineId() + "' not found."));
+        };
+    }
+
+    @GetMapping("/paged")
+    @Operation(summary = "Retrieves machines with keyset pagination")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Paged machines retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = PagedResponse.class))),
+            @ApiResponse(responseCode = "404", description = "No machines found")
+    })
+    public ResponseEntity<?> getPagedMachines(
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) UUID lastMachineId,
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) String search
+    ) {
+        int safeLimit = Math.clamp(pageSize, 1, 50);
+        GetPagedMachinesQuery query = new GetPagedMachinesQuery(safeLimit, lastMachineId, page, search);
+        GetPagedMachinesResult result = getPagedMachinesHandler.handle(query);
+
+        return switch (result) {
+            case GetPagedMachinesResult.Success success -> ResponseEntity.ok(success.page());
+            case GetPagedMachinesResult.NotFound ignored -> ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "No machines found."));
         };
     }
 }

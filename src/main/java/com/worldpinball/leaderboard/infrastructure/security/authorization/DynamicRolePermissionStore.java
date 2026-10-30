@@ -62,16 +62,25 @@ public class DynamicRolePermissionStore implements RolePermissionStore, RolePerm
 
     @Override
     public boolean hasPermission(String role, String permission) {
+        if (current.isEmpty() && rolePermissionRepository != null) {
+            reloadFromDatabase();
+        }
         return current.hasPermission(role, permission);
     }
 
     @Override
     public boolean hasPermission(Collection<String> roles, String permission) {
+        if (current.isEmpty() && rolePermissionRepository != null) {
+            reloadFromDatabase();
+        }
         return current.hasPermission(roles, permission);
     }
 
     @Override
     public Set<String> getPermissions(String role) {
+        if (current.isEmpty() && rolePermissionRepository != null) {
+            reloadFromDatabase();
+        }
         return current.getPermissions(role);
     }
 }

@@ -4,5 +4,6 @@ public enum EnrollmentTokenType {
     DeviceEnroll,
     DeviceAttach,
     DeviceRotateKey,
-    AdminBootstrap
+    AdminBootstrap,
+    TerminalBootstrap
 }

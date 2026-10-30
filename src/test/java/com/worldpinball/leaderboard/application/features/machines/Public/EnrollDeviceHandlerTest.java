@@ -11,6 +11,8 @@ import com.worldpinball.leaderboard.domain.entities.EnrollmentToken;
 import com.worldpinball.leaderboard.domain.entities.Machine;
 import com.worldpinball.leaderboard.domain.enums.EnrollmentTokenType;
 import com.worldpinball.leaderboard.domain.enums.MachineStatus;
+import com.worldpinball.leaderboard.infrastructure.CaCertificateRepository;
+import com.worldpinball.leaderboard.infrastructure.DeviceCertificateRepository;
 import com.worldpinball.leaderboard.infrastructure.DeviceRepository;
 import com.worldpinball.leaderboard.infrastructure.EnrollmentTokenRepository;
 import com.worldpinball.leaderboard.infrastructure.MachineDeviceRepository;
@@ -47,6 +49,12 @@ class EnrollDeviceHandlerTest {
     private MachineRepository machineRepository;
 
     @Mock
+    private CaCertificateRepository caCertificateRepository;
+
+    @Mock
+    private DeviceCertificateRepository deviceCertificateRepository;
+
+    @Mock
     private CertificateAuthorityService caService;
 
     private final SecretService secretService = new SecretService();
@@ -61,7 +69,9 @@ class EnrollDeviceHandlerTest {
                 machineDeviceRepository,
                 machineRepository,
                 secretService,
-                caService
+                caService,
+                caCertificateRepository,
+                deviceCertificateRepository
         );
     }
 

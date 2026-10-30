@@ -24,6 +24,7 @@ import com.worldpinball.leaderboard.application.features.gamesessions.Public.rec
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.recordballscore.RecordBallScoreResult;
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.recordballscore.commands.RecordBallScoreCommand;
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.SubmitScoreHandler;
+import com.worldpinball.leaderboard.application.services.LobbyNotificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -39,6 +40,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +71,9 @@ class SessionsControllerTest {
     @Mock
     private SubmitScoreHandler submitScoreHandler;
 
+    @Mock
+    private LobbyNotificationService lobbyNotifier;
+
     private SessionsController sut;
 
     @BeforeEach
@@ -81,7 +86,8 @@ class SessionsControllerTest {
                 launchSessionHandler,
                 abortSessionHandler,
                 recordBallScoreHandler,
-                submitScoreHandler
+                submitScoreHandler,
+                lobbyNotifier
         );
     }
 
@@ -102,6 +108,7 @@ class SessionsControllerTest {
         CreateGameSessionResponse body = (CreateGameSessionResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
         assertThat(body.nonce()).isEqualTo("nonce-123");
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 
     @Test
@@ -133,6 +140,7 @@ class SessionsControllerTest {
         AddPlayerResponse body = (AddPlayerResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
         assertThat(body.slotNumber()).isEqualTo(1);
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 
     @Test
@@ -148,6 +156,7 @@ class SessionsControllerTest {
         KickPlayerResponse body = (KickPlayerResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
         assertThat(body.slotNumber()).isEqualTo(2);
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 
     @Test
@@ -162,6 +171,7 @@ class SessionsControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         LaunchSessionResponse body = (LaunchSessionResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 
     @Test
@@ -176,6 +186,7 @@ class SessionsControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         AbortSessionResponse body = (AbortSessionResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 
     @Test
@@ -194,5 +205,6 @@ class SessionsControllerTest {
         RecordBallScoreResponse body = (RecordBallScoreResponse) response.getBody();
         assertThat(body.sessionId()).isEqualTo(sessionId);
         assertThat(body.score()).isEqualTo(150_000L);
+        verify(lobbyNotifier).notifyLobbyUpdated(sessionId);
     }
 }

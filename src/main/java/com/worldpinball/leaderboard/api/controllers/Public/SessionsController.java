@@ -26,6 +26,7 @@ import com.worldpinball.leaderboard.application.features.gamesessions.Public.sub
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.SubmitScoreHandler;
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.SubmitScoreResult;
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.commands.SubmitScoreCommand;
+import com.worldpinball.leaderboard.application.services.LobbyNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -47,6 +48,7 @@ public class SessionsController {
     private final AbortSessionHandler abortSessionHandler;
     private final RecordBallScoreHandler recordBallScoreHandler;
     private final SubmitScoreHandler submitScoreHandler;
+    private final LobbyNotificationService lobbyNotifier;
 
     @PostMapping("/create")
     public ResponseEntity<?> createGameSession(
@@ -65,6 +67,10 @@ public class SessionsController {
         );
 
         CreateGameSessionResult result = createGameSessionHandler.handle(command);
+
+        if (result instanceof CreateGameSessionResult.Success s) {
+            lobbyNotifier.notifyLobbyUpdated(s.sessionId());
+        }
 
         return switch (result) {
             case CreateGameSessionResult.Success s -> ResponseEntity.ok(
@@ -106,6 +112,9 @@ public class SessionsController {
         );
 
         AddPlayerResult result = addPlayerHandler.handle(command);
+        if (result instanceof AddPlayerResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case AddPlayerResult.Success s -> ResponseEntity.ok(
@@ -133,6 +142,9 @@ public class SessionsController {
     ) {
         var command = new KickPlayerCommand(sessionId, slotNumber);
         KickPlayerResult result = kickPlayerHandler.handle(command);
+        if (result instanceof KickPlayerResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case KickPlayerResult.Success s -> ResponseEntity.ok(
@@ -153,6 +165,9 @@ public class SessionsController {
     public ResponseEntity<?> launchSession(@PathVariable UUID sessionId) {
         var command = new LaunchSessionCommand(sessionId);
         LaunchSessionResult result = launchSessionHandler.handle(command);
+        if (result instanceof LaunchSessionResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case LaunchSessionResult.Success s -> ResponseEntity.ok(
@@ -169,6 +184,9 @@ public class SessionsController {
     public ResponseEntity<?> abortSession(@PathVariable UUID sessionId) {
         var command = new AbortSessionCommand(sessionId);
         AbortSessionResult result = abortSessionHandler.handle(command);
+        if (result instanceof AbortSessionResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case AbortSessionResult.Success s -> ResponseEntity.ok(
@@ -195,6 +213,9 @@ public class SessionsController {
         );
 
         RecordBallScoreResult result = recordBallScoreHandler.handle(command);
+        if (result instanceof RecordBallScoreResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case RecordBallScoreResult.Success s -> ResponseEntity.ok(
@@ -229,6 +250,9 @@ public class SessionsController {
 
         var command = new SubmitScoreCommand(sessionId, effectiveDeviceId, slotScores);
         SubmitScoreResult result = submitScoreHandler.handle(command);
+        if (result instanceof SubmitScoreResult.Success) {
+            lobbyNotifier.notifyLobbyUpdated(sessionId);
+        }
 
         return switch (result) {
             case SubmitScoreResult.Success s -> ResponseEntity.ok(new SubmitScoreResponse(s.scoreEntryIds()));

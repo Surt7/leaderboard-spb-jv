@@ -1,6 +1,7 @@
 package com.worldpinball.leaderboard.domain.entities;
 
 import com.worldpinball.leaderboard.domain.enums.GameSessionState;
+import com.worldpinball.leaderboard.domain.enums.GameSlotStatus;
 import com.worldpinball.leaderboard.domain.enums.TelemetryMode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -124,5 +125,62 @@ class GameSessionTest {
         GameSession session = createSession(Instant.now());
         session.enableLiveStreaming();
         assertThat(session.getTelemetryMode()).isEqualTo(TelemetryMode.LIVE_STREAMING);
+    }
+
+    @Test
+    void constructor_shouldInitializeFourOpenSlots() {
+        GameSession session = createSession(Instant.now());
+
+        assertThat(session.getSlots()).hasSize(4);
+        assertThat(session.getSlots().stream().map(GameSession.GameSlot::getSlotNumber))
+                .containsExactly(1, 2, 3, 4);
+        assertThat(session.getSlots()).allMatch(s ->
+                s.getStatus() == GameSlotStatus.Open && s.getUserId() == null && s.getGuestInitials() == null
+        );
+    }
+
+    @Test
+    void addPlayer_shouldMarkSlotAsOccupied() {
+        GameSession session = createSession(Instant.now());
+        UUID userId = UUID.randomUUID();
+
+        session.addPlayer(2, userId);
+
+        GameSession.GameSlot slot2 = session.getSlots().stream()
+                .filter(s -> s.getSlotNumber() == 2)
+                .findFirst()
+                .orElseThrow();
+        assertThat(slot2.getStatus()).isEqualTo(GameSlotStatus.Occupied);
+        assertThat(slot2.getUserId()).isEqualTo(userId);
+        assertThat(session.getSlots().stream().filter(s -> s.getSlotNumber() != 2))
+                .allMatch(s -> s.getStatus() == GameSlotStatus.Open);
+    }
+
+    @Test
+    void removePlayer_shouldResetSlotToOpen() {
+        GameSession session = createSession(Instant.now());
+        session.addPlayer(1, null, "TOM", false);
+        assertThat(session.getSlots().getFirst().getStatus()).isEqualTo(GameSlotStatus.Occupied);
+
+        session.removePlayer(1);
+
+        GameSession.GameSlot slot1 = session.getSlots().getFirst();
+        assertThat(slot1.getStatus()).isEqualTo(GameSlotStatus.Open);
+        assertThat(slot1.getGuestInitials()).isNull();
+        assertThat(slot1.getUserId()).isNull();
+    }
+
+    @Test
+    void launch_shouldLockAllRemainingOpenSlots() {
+        GameSession session = createSession(Instant.now());
+        session.addPlayer(1, null, "AAA", false);
+        session.addPlayer(3, null, "BBB", false);
+
+        session.launch(Instant.now());
+
+        assertThat(session.getSlots().get(0).getStatus()).isEqualTo(GameSlotStatus.Occupied);
+        assertThat(session.getSlots().get(1).getStatus()).isEqualTo(GameSlotStatus.Locked);
+        assertThat(session.getSlots().get(2).getStatus()).isEqualTo(GameSlotStatus.Occupied);
+        assertThat(session.getSlots().get(3).getStatus()).isEqualTo(GameSlotStatus.Locked);
     }
 }

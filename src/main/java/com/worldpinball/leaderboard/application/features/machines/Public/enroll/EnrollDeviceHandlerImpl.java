@@ -3,16 +3,21 @@ package com.worldpinball.leaderboard.application.features.machines.Public.enroll
 import com.worldpinball.leaderboard.application.security.ca.CertificateAuthorityService;
 import com.worldpinball.leaderboard.application.security.ca.IssuedCertificate;
 import com.worldpinball.leaderboard.application.security.secrets.SecretService;
+import com.worldpinball.leaderboard.domain.entities.CaCertificate;
 import com.worldpinball.leaderboard.domain.entities.Device;
+import com.worldpinball.leaderboard.domain.entities.DeviceCertificate;
 import com.worldpinball.leaderboard.domain.entities.EnrollmentToken;
 import com.worldpinball.leaderboard.domain.entities.Machine;
 import com.worldpinball.leaderboard.domain.entities.MachineDevice;
+import com.worldpinball.leaderboard.domain.enums.CaType;
+import com.worldpinball.leaderboard.infrastructure.CaCertificateRepository;
+import com.worldpinball.leaderboard.infrastructure.DeviceCertificateRepository;
 import com.worldpinball.leaderboard.infrastructure.DeviceRepository;
 import com.worldpinball.leaderboard.infrastructure.EnrollmentTokenRepository;
 import com.worldpinball.leaderboard.infrastructure.MachineDeviceRepository;
 import com.worldpinball.leaderboard.infrastructure.MachineRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,7 +27,6 @@ import java.util.UUID;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class EnrollDeviceHandlerImpl implements EnrollDeviceHandler {
 
     private final EnrollmentTokenRepository enrollmentTokenRepository;
@@ -31,6 +35,41 @@ public class EnrollDeviceHandlerImpl implements EnrollDeviceHandler {
     private final MachineRepository machineRepository;
     private final SecretService secretService;
     private final CertificateAuthorityService caService;
+    private final CaCertificateRepository caCertificateRepository;
+    private final DeviceCertificateRepository deviceCertificateRepository;
+
+    public EnrollDeviceHandlerImpl(
+            EnrollmentTokenRepository enrollmentTokenRepository,
+            DeviceRepository deviceRepository,
+            MachineDeviceRepository machineDeviceRepository,
+            MachineRepository machineRepository,
+            SecretService secretService,
+            CertificateAuthorityService caService
+    ) {
+        this(enrollmentTokenRepository, deviceRepository, machineDeviceRepository,
+                machineRepository, secretService, caService, null, null);
+    }
+
+    @Autowired
+    public EnrollDeviceHandlerImpl(
+            EnrollmentTokenRepository enrollmentTokenRepository,
+            DeviceRepository deviceRepository,
+            MachineDeviceRepository machineDeviceRepository,
+            MachineRepository machineRepository,
+            SecretService secretService,
+            CertificateAuthorityService caService,
+            CaCertificateRepository caCertificateRepository,
+            DeviceCertificateRepository deviceCertificateRepository
+    ) {
+        this.enrollmentTokenRepository = enrollmentTokenRepository;
+        this.deviceRepository = deviceRepository;
+        this.machineDeviceRepository = machineDeviceRepository;
+        this.machineRepository = machineRepository;
+        this.secretService = secretService;
+        this.caService = caService;
+        this.caCertificateRepository = caCertificateRepository;
+        this.deviceCertificateRepository = deviceCertificateRepository;
+    }
 
     @Override
     @Transactional
@@ -114,6 +153,30 @@ public class EnrollDeviceHandlerImpl implements EnrollDeviceHandler {
                 cmd.deviceSerialNumber(),
                 cmd.publicKeyPem()
         );
+
+        if (deviceCertificateRepository != null) {
+            UUID caId = UUID.randomUUID();
+            if (caCertificateRepository != null) {
+                caId = caCertificateRepository.findFirstByCaTypeAndActiveTrue(CaType.Intermediate)
+                        .or(() -> caCertificateRepository.findFirstByActiveTrueOrderByCreatedAtDesc())
+                        .map(CaCertificate::getCaId)
+                        .orElse(caId);
+            }
+
+            DeviceCertificate deviceCert = new DeviceCertificate(
+                    device.getDeviceId(),
+                    caId,
+                    issuedCert.serialNumber(),
+                    issuedCert.thumbprintSha256(),
+                    issuedCert.subjectDn(),
+                    issuedCert.issuerDn(),
+                    issuedCert.certPem(),
+                    issuedCert.notBeforeUtc(),
+                    issuedCert.notAfterUtc(),
+                    now
+            );
+            deviceCertificateRepository.save(deviceCert);
+        }
 
         log.info("Device {} (serial: {}) enrolled and attached to machine {} with CertSerial {}.",
                 device.getDeviceId(), cmd.deviceSerialNumber(), cmd.machineId(), issuedCert.serialNumber());

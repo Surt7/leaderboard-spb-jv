@@ -28,6 +28,9 @@ public class Device {
     @Column(name = "device_id", nullable = false)
     private UUID deviceId;
 
+    @Column(name = "owner_user_id")
+    private UUID ownerUserId;
+
     @Column(name = "serial_physical", nullable = false)
     private String serialPhysical;
 
@@ -186,5 +189,13 @@ public class Device {
 
     public void setPublicKeyFingerprint(String fingerprint) {
         this.publicKeyFingerprint = fingerprint;
+    }
+
+    public void assignOwner(UUID userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("Owner user ID cannot be null.");
+        }
+        this.ownerUserId = userId;
+        this.updatedAtUtc = Instant.now();
     }
 }

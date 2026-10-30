@@ -1,0 +1,186 @@
+scalar Long
+
+enum SortEnumType {
+    ASC
+    DESC
+}
+
+input StringOperationFilterInput {
+    eq: String
+    neq: String
+    contains: String
+    in: [String!]
+}
+
+input BooleanOperationFilterInput {
+    eq: Boolean
+    neq: Boolean
+}
+
+input GameModeFilterInput {
+    code: StringOperationFilterInput
+    name: StringOperationFilterInput
+}
+
+input IpLicenseFilterInput {
+    slug: StringOperationFilterInput
+    name: StringOperationFilterInput
+}
+
+input MachineFilterInput {
+    displayName: StringOperationFilterInput
+    worldPinballSerialNumber: StringOperationFilterInput
+    status: StringOperationFilterInput
+    ipLicense: IpLicenseFilterInput
+}
+
+input ScoreEntryFilterInput {
+    userId: StringOperationFilterInput
+    isValidated: BooleanOperationFilterInput
+    mode: GameModeFilterInput
+    ipLicense: IpLicenseFilterInput
+    machine: MachineFilterInput
+}
+
+input UserProfileFilterInput {
+    displayName: StringOperationFilterInput
+    initials: StringOperationFilterInput
+    countryCode: StringOperationFilterInput
+    isProfilePublic: BooleanOperationFilterInput
+}
+
+input ScoreEntrySortInput {
+    score: SortEnumType
+    achievedAtUtc: SortEnumType
+    slotNumber: SortEnumType
+}
+
+input MachineSortInput {
+    displayName: SortEnumType
+    registeredAtUtc: SortEnumType
+    worldPinballSerialNumber: SortEnumType
+}
+
+input UserProfileSortInput {
+    displayName: SortEnumType
+    createdAtUtc: SortEnumType
+}
+
+type ScoreStatsDto {
+    totalGames: Int!
+    bestScore: Long!
+}
+
+type ActiveSessionDto {
+    sessionId: ID!
+    machineName: String!
+    modeName: String
+    slotNumber: Int!
+    state: String!
+    startedAtUtc: String!
+}
+
+type IpLicense {
+    ipId: ID!
+    name: String!
+    slug: String!
+    publisherId: ID
+    isActive: Boolean!
+    active: Boolean!
+    notes: String
+    createdAtUtc: String!
+    updatedAtUtc: String
+}
+
+type GameMode {
+    modeId: ID!
+    code: String!
+    name: String!
+    description: String
+    isActive: Boolean!
+    active: Boolean!
+    createdAtUtc: String!
+    updatedAtUtc: String
+}
+
+type Device {
+    deviceId: ID!
+    serialPhysical: String!
+    status: String!
+    ownerUserId: ID
+    createdAtUtc: String!
+    enrolledAtUtc: String
+    revokedAtUtc: String
+}
+
+type Machine {
+    machineId: ID!
+    ipId: ID!
+    ipLicense: IpLicense
+    worldPinballSerialNumber: String!
+    displayName: String!
+    status: String!
+    machineNotes: String
+    registeredAtUtc: String!
+    updatedAtUtc: String
+}
+
+type ScoreEntry {
+    scoreEntryId: ID!
+    slotNumber: Int!
+    sessionId: ID!
+    userId: String
+    deviceId: ID!
+    device: Device
+    machineId: ID!
+    machine: Machine
+    ipId: ID!
+    ipLicense: IpLicense
+    modeId: ID!
+    mode: GameMode
+    score: Long!
+    achievedAtUtc: String!
+    isValidated: Boolean!
+    validated: Boolean!
+    validationReason: String
+}
+
+type UserProfile {
+    userId: ID!
+    displayName: String!
+    initials: String!
+    avatarUrl: String!
+    countryCode: String!
+    isProfilePublic: Boolean!
+    profilePublic: Boolean!
+    createdAtUtc: String!
+    updatedAtUtc: String
+}
+
+type ClaimMachinePayload {
+    success: Boolean!
+    message: String!
+    machine: Machine
+}
+
+type JoinGameSessionPayload {
+    success: Boolean!
+    message: String!
+    slotNumber: Int
+    machineName: String
+}
+
+type Query {
+    myScoreStats(modeCode: String): ScoreStatsDto!
+    myScores(skip: Int = 0, take: Int = 20, where: ScoreEntryFilterInput, order: [ScoreEntrySortInput!]): [ScoreEntry!]!
+    scores(skip: Int = 0, take: Int = 50, where: ScoreEntryFilterInput, order: [ScoreEntrySortInput!]): [ScoreEntry!]!
+    machines(where: MachineFilterInput, order: [MachineSortInput!]): [Machine!]!
+    profiles(where: UserProfileFilterInput, order: [UserProfileSortInput!]): [UserProfile!]!
+    myActiveSession: ActiveSessionDto
+}
+
+type Mutation {
+    claimMachine(code: String!): ClaimMachinePayload!
+    joinGameSession(code: String!): JoinGameSessionPayload!
+    endGameSession(sessionId: ID!): Boolean!
+}

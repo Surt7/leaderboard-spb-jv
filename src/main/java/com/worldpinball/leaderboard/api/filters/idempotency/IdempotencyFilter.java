@@ -68,7 +68,7 @@ public class IdempotencyFilter extends OncePerRequestFilter {
             return;
         }
 
-        String cacheKey = request.getMethod() + ":" + request.getRequestURI() + ":" + idempotencyKey.trim();
+        String cacheKey = idempotencyKey.trim();
 
         Optional<IdempotentResponse> cachedResponse = idempotencyStore.get(cacheKey);
         if (cachedResponse.isPresent()) {
