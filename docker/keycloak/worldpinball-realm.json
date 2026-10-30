@@ -11,7 +11,25 @@
   "roles": {
     "realm": [
       { "name": "Player", "description": "WorldPinball player" },
-      { "name": "Admin", "description": "WorldPinball administrator" }
+      { "name": "Admin", "description": "WorldPinball administrator" },
+      {
+        "name": "default-roles-worldpinball",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "Player",
+            "offline_access",
+            "uma_authorization"
+          ],
+          "client": {
+            "account": [
+              "view-profile",
+              "manage-account"
+            ]
+          }
+        }
+      }
     ]
   },
   "clients": [
