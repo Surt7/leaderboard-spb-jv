@@ -20,7 +20,7 @@ services:
   # 1. Core Spring Boot Backend API
   api:
     build:
-      context: .
+      context: ./core-api
       dockerfile: Dockerfile
     container_name: worldpinball-java-prod-api
     environment:

@@ -46,7 +46,7 @@ services:
   api:
     profiles: ["apps"]
     build:
-      context: .
+      context: ./core-api
       dockerfile: Dockerfile
     image: worldpinball-java-api:dev
     container_name: worldpinball-java-api
@@ -88,10 +88,10 @@ services:
     develop:
       watch:
         - action: sync
-          path: ./target/classes
+          path: ./core-api/target/classes
           target: /app/classes
         - action: rebuild
-          path: ./pom.xml
+          path: ./core-api/pom.xml
 
   # Core API service (containerized - Replica 2 for Load Balancing)
   api-2:
@@ -139,7 +139,7 @@ services:
   bff:
     profiles: ["apps"]
     build:
-      context: ../Leaderboard_Bff_Java
+      context: ./bff
       dockerfile: Dockerfile
     image: worldpinball-java-bff:dev
     container_name: worldpinball-java-bff
@@ -181,10 +181,10 @@ services:
     develop:
       watch:
         - action: sync
-          path: ../Leaderboard_Bff_Java/target/classes
+          path: ./bff/target/classes
           target: /app/classes
         - action: rebuild
-          path: ../Leaderboard_Bff_Java/pom.xml
+          path: ./bff/pom.xml
 
   # Allow Keycloak to accept requests from auth.worldpinball.local
   keycloak:
