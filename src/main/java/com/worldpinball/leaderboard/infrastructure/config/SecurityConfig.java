@@ -83,16 +83,10 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/v1/test/**"
                         ).permitAll()
-                        // Permission-protected admin endpoints evaluated by @RequirePermission AOP aspect
-                        .requestMatchers(
-                                "/api/v1/admin/certificates/**",
-                                "/api/v1/admin/machines/provision",
-                                "/api/v1/admin/machines/*/tokens"
-                        ).permitAll()
-                        // Admin-only endpoints protected by Keycloak Admin role
+                        // Admin endpoints require authentication (Keycloak Bearer JWT or Operator Token)
                         .requestMatchers(
                                 "/api/v1/admin/**"
-                        ).hasAnyRole("Admin", "ADMIN")
+                        ).authenticated()
                         // Allow other endpoints or authenticated where appropriate
                         .anyRequest().permitAll()
                 )

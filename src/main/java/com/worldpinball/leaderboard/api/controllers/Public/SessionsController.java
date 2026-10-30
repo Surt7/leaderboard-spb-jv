@@ -27,6 +27,11 @@ import com.worldpinball.leaderboard.application.features.gamesessions.Public.sub
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.SubmitScoreResult;
 import com.worldpinball.leaderboard.application.features.gamesessions.Public.submitscore.commands.SubmitScoreCommand;
 import com.worldpinball.leaderboard.application.services.LobbyNotificationService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.worldpinball.leaderboard.application.security.cryptography.MachineAuthContext;
+import com.worldpinball.leaderboard.application.security.cryptography.MachineAuthResult;
+import com.worldpinball.leaderboard.infrastructure.security.cryptography.MachineAuthService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -49,14 +54,51 @@ public class SessionsController {
     private final RecordBallScoreHandler recordBallScoreHandler;
     private final SubmitScoreHandler submitScoreHandler;
     private final LobbyNotificationService lobbyNotifier;
+    private final MachineAuthService machineAuthService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/create")
     public ResponseEntity<?> createGameSession(
         @RequestBody CreateGameSessionRequest request,
-        @RequestHeader(value = "X-Device-Id", required = false) UUID headerDeviceId
+        @RequestHeader(value = "X-Device-Id", required = false) String deviceIdHeader,
+        @RequestHeader(value = "X-Timestamp", required = false) String timestampHeader,
+        @RequestHeader(value = "X-Nonce", required = false) String nonceHeader,
+        @RequestHeader(value = "X-Signature", required = false) String signatureHeader,
+        HttpServletRequest httpRequest
     ) {
-        UUID effectiveDeviceId = request.deviceId() != null ? request.deviceId() : headerDeviceId;
-        if (effectiveDeviceId == null) {
+        UUID effectiveDeviceId;
+        if (signatureHeader != null && !signatureHeader.isBlank()) {
+            String rawBody;
+            try {
+                rawBody = objectMapper.writeValueAsString(request);
+            } catch (Exception e) {
+                rawBody = "{}";
+            }
+            var authContext = new MachineAuthContext(
+                deviceIdHeader,
+                timestampHeader,
+                nonceHeader,
+                signatureHeader,
+                httpRequest.getMethod(),
+                httpRequest.getRequestURI(),
+                rawBody
+            );
+            MachineAuthResult authResult = machineAuthService.validate(authContext);
+            if (!(authResult instanceof MachineAuthResult.Success s)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Machine authentification failed."));
+            }
+            effectiveDeviceId = s.deviceId();
+        } else if (request.deviceId() != null) {
+            effectiveDeviceId = request.deviceId();
+        } else if (deviceIdHeader != null && !deviceIdHeader.isBlank()) {
+            try {
+                effectiveDeviceId = UUID.fromString(deviceIdHeader.trim());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Invalid DeviceId format."));
+            }
+        } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "DeviceId must be provided."));
         }
 
@@ -234,10 +276,45 @@ public class SessionsController {
     public ResponseEntity<?> submitScore(
         @PathVariable UUID sessionId,
         @RequestBody SubmitScoreRequest request,
-        @RequestHeader(value = "X-Device-Id", required = false) UUID headerDeviceId
+        @RequestHeader(value = "X-Device-Id", required = false) String deviceIdHeader,
+        @RequestHeader(value = "X-Timestamp", required = false) String timestampHeader,
+        @RequestHeader(value = "X-Nonce", required = false) String nonceHeader,
+        @RequestHeader(value = "X-Signature", required = false) String signatureHeader,
+        HttpServletRequest httpRequest
     ) {
-        UUID effectiveDeviceId = request.deviceId() != null ? request.deviceId() : headerDeviceId;
-        if (effectiveDeviceId == null) {
+        UUID effectiveDeviceId;
+        if (signatureHeader != null && !signatureHeader.isBlank()) {
+            String rawBody;
+            try {
+                rawBody = objectMapper.writeValueAsString(request);
+            } catch (Exception e) {
+                rawBody = "{}";
+            }
+            var authContext = new MachineAuthContext(
+                deviceIdHeader,
+                timestampHeader,
+                nonceHeader,
+                signatureHeader,
+                httpRequest.getMethod(),
+                httpRequest.getRequestURI(),
+                rawBody
+            );
+            MachineAuthResult authResult = machineAuthService.validate(authContext);
+            if (!(authResult instanceof MachineAuthResult.Success s)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Machine authentification failed."));
+            }
+            effectiveDeviceId = s.deviceId();
+        } else if (request.deviceId() != null) {
+            effectiveDeviceId = request.deviceId();
+        } else if (deviceIdHeader != null && !deviceIdHeader.isBlank()) {
+            try {
+                effectiveDeviceId = UUID.fromString(deviceIdHeader.trim());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(Map.of("message", "Invalid DeviceId format."));
+            }
+        } else {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of("message", "DeviceId must be provided."));
         }
         if (request.scores() == null || request.scores().isEmpty()) {

@@ -89,6 +89,70 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
 
+    @ExceptionHandler(org.springframework.web.server.ResponseStatusException.class)
+    public ResponseEntity<ApiErrorResponse> handleResponseStatusException(
+        org.springframework.web.server.ResponseStatusException ex,
+        HttpServletRequest request
+    ) {
+        ApiErrorResponse response = ApiErrorResponse.builder()
+            .timestamp(Instant.now())
+            .status(ex.getStatusCode().value())
+            .error(ex.getStatusCode().toString())
+            .message(ex.getReason() != null ? ex.getReason() : ex.getMessage())
+            .path(request.getRequestURI())
+            .build();
+
+        return ResponseEntity.status(ex.getStatusCode()).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ApiErrorResponse> handleAccessDenied(
+        org.springframework.security.access.AccessDeniedException ex,
+        HttpServletRequest request
+    ) {
+        ApiErrorResponse response = ApiErrorResponse.builder()
+            .timestamp(Instant.now())
+            .status(HttpStatus.FORBIDDEN.value())
+            .error(HttpStatus.FORBIDDEN.getReasonPhrase())
+            .message(ex.getMessage())
+            .path(request.getRequestURI())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<ApiErrorResponse> handleAuthenticationException(
+        org.springframework.security.core.AuthenticationException ex,
+        HttpServletRequest request
+    ) {
+        ApiErrorResponse response = ApiErrorResponse.builder()
+            .timestamp(Instant.now())
+            .status(HttpStatus.UNAUTHORIZED.value())
+            .error(HttpStatus.UNAUTHORIZED.getReasonPhrase())
+            .message(ex.getMessage())
+            .path(request.getRequestURI())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+    }
+
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiErrorResponse> handleHttpMessageNotReadable(
+        org.springframework.http.converter.HttpMessageNotReadableException ex,
+        HttpServletRequest request
+    ) {
+        ApiErrorResponse response = ApiErrorResponse.builder()
+            .timestamp(Instant.now())
+            .status(HttpStatus.BAD_REQUEST.value())
+            .error(HttpStatus.BAD_REQUEST.getReasonPhrase())
+            .message("Malformed JSON request body.")
+            .path(request.getRequestURI())
+            .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneralException(
         Exception ex,

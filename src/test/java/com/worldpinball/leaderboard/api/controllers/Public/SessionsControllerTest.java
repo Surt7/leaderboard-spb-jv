@@ -74,6 +74,11 @@ class SessionsControllerTest {
     @Mock
     private LobbyNotificationService lobbyNotifier;
 
+    @Mock
+    private com.worldpinball.leaderboard.infrastructure.security.cryptography.MachineAuthService machineAuthService;
+
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
     private SessionsController sut;
 
     @BeforeEach
@@ -87,7 +92,9 @@ class SessionsControllerTest {
                 abortSessionHandler,
                 recordBallScoreHandler,
                 submitScoreHandler,
-                lobbyNotifier
+                lobbyNotifier,
+                machineAuthService,
+                objectMapper
         );
     }
 
@@ -102,7 +109,7 @@ class SessionsControllerTest {
                 .thenReturn(new CreateGameSessionResult.Success(sessionId, "nonce-123", now));
 
         CreateGameSessionRequest request = new CreateGameSessionRequest(deviceId, "classic", "1.0.0");
-        ResponseEntity<?> response = sut.createGameSession(request, null);
+        ResponseEntity<?> response = sut.createGameSession(request, null, null, null, null, null);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         CreateGameSessionResponse body = (CreateGameSessionResponse) response.getBody();
