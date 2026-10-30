@@ -3,7 +3,8 @@
   "enabled": true,
   "displayName": "WorldPinball Development",
   "sslRequired": "external",
-  "registrationAllowed": false,
+  "registrationAllowed": true,
+  "rememberMe": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
@@ -261,6 +262,23 @@
       "credentials": [
         {
           "value": "Player123!",
+          "type": "password",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["Player"]
+    },
+    {
+      "id": "f02191ae-39a5-4729-99b4-723f552f290a",
+      "username": "mobile-user",
+      "enabled": true,
+      "email": "mobile@worldpinball.local",
+      "firstName": "Mobile",
+      "lastName": "Player",
+      "emailVerified": true,
+      "credentials": [
+        {
+          "value": "Password123!",
           "type": "password",
           "temporary": false
         }
