@@ -153,6 +153,10 @@ services:
       - REDIS_PORT=6379
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - OAUTH2_ISSUER_URI=https://auth.worldpinball.local/realms/worldpinball
+      - KEYCLOAK_ADMIN_URL=http://keycloak:8080
+      - KEYCLOAK_ADMIN=${KEYCLOAK_ADMIN:-admin}
+      - KEYCLOAK_ADMIN_PASSWORD=${KEYCLOAK_ADMIN_PASSWORD}
+      - KEYCLOAK_REALM=worldpinball
       - JAVA_TOOL_OPTIONS=-Djavax.net.ssl.trustStore=/app/certs/dev-truststore.p12 -Djavax.net.ssl.trustStorePassword=changeit -Djavax.net.ssl.trustStoreType=PKCS12
       - GRPC_CLIENT_GAMESESSIONSERVICE_ADDRESS=static://api:9090
       - GRPC_CLIENT_GAMESESSIONSERVICE_NEGOTIATION_TYPE=plaintext
