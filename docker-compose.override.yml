@@ -124,7 +124,7 @@ services:
       - OTEL_SERVICE_NAME=worldpinball-java-api-2
     ports:
       - "7086:7085"
-      - "9091:9090"
+      - "9099:9090"
     volumes:
       - ./docker/nginx/certs/dev-rootCA.pem:/app/certs/dev-rootCA.pem:ro
     depends_on:
