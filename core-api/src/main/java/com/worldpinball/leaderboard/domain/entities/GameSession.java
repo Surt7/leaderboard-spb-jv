@@ -434,4 +434,48 @@ public class GameSession {
         }
         this.telemetryMode = TelemetryMode.LIVE_STREAMING;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID sessionId;
+        private UUID machineId;
+        private UUID deviceId;
+        private UUID modeId;
+        private String clientVersion;
+        private String nonce;
+        private Instant startedAtUtc;
+        private Instant endedAtUtc;
+        private GameSessionState state = GameSessionState.CREATED;
+        private TelemetryMode telemetryMode = TelemetryMode.BALL_CHECKPOINT_ONLY;
+
+        public Builder sessionId(UUID sessionId) { this.sessionId = sessionId; return this; }
+        public Builder machineId(UUID machineId) { this.machineId = machineId; return this; }
+        public Builder deviceId(UUID deviceId) { this.deviceId = deviceId; return this; }
+        public Builder modeId(UUID modeId) { this.modeId = modeId; return this; }
+        public Builder clientVersion(String clientVersion) { this.clientVersion = clientVersion; return this; }
+        public Builder nonce(String nonce) { this.nonce = nonce; return this; }
+        public Builder startedAtUtc(Instant startedAtUtc) { this.startedAtUtc = startedAtUtc; return this; }
+        public Builder endedAtUtc(Instant endedAtUtc) { this.endedAtUtc = endedAtUtc; return this; }
+        public Builder state(GameSessionState state) { this.state = state; return this; }
+        public Builder telemetryMode(TelemetryMode telemetryMode) { this.telemetryMode = telemetryMode; return this; }
+
+        public GameSession build() {
+            GameSession session = new GameSession(
+                machineId,
+                deviceId,
+                modeId,
+                clientVersion != null ? clientVersion : "1.0.0",
+                nonce != null ? nonce : UUID.randomUUID().toString(),
+                startedAtUtc != null ? startedAtUtc : Instant.now(),
+                sessionId != null ? sessionId : UUID.randomUUID()
+            );
+            if (endedAtUtc != null) session.endedAtUtc = endedAtUtc;
+            if (state != null) session.state = state;
+            if (telemetryMode != null) session.telemetryMode = telemetryMode;
+            return session;
+        }
+    }
 }

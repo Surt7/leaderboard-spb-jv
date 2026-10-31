@@ -163,4 +163,81 @@ public class Machine {
         this.status = status;
         this.updatedAtUtc = now != null ? now : Instant.now();
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID machineId;
+        private UUID ipId;
+        private String worldPinballSerialNumber;
+        private String displayName;
+        private MachineStatus status = MachineStatus.PENDING_ENROLLMENT;
+        private UUID idempotencyKey;
+        private String nonce;
+        private String machineNotes;
+        private String manufacturer;
+        private String manufacturerModelCode;
+        private String manufacturerModelName;
+        private String manufacturerModelYear;
+        private String manufacturerSerialNumber;
+        private String manufacturerNotes;
+        private String location;
+        private Integer voltage;
+        private Integer frequencyHz;
+        private java.math.BigDecimal amperage;
+        private java.time.LocalDate manufacturedDate;
+        private Instant registeredAtUtc;
+        private Instant updatedAtUtc;
+
+        public Builder machineId(UUID machineId) { this.machineId = machineId; return this; }
+        public Builder ipId(UUID ipId) { this.ipId = ipId; return this; }
+        public Builder worldPinballSerialNumber(String serial) { this.worldPinballSerialNumber = serial; return this; }
+        public Builder displayName(String displayName) { this.displayName = displayName; return this; }
+        public Builder status(MachineStatus status) { this.status = status; return this; }
+        public Builder idempotencyKey(UUID idempotencyKey) { this.idempotencyKey = idempotencyKey; return this; }
+        public Builder nonce(String nonce) { this.nonce = nonce; return this; }
+        public Builder machineNotes(String notes) { this.machineNotes = notes; return this; }
+        public Builder manufacturer(String manufacturer) { this.manufacturer = manufacturer; return this; }
+        public Builder manufacturerModelCode(String code) { this.manufacturerModelCode = code; return this; }
+        public Builder manufacturerModelName(String name) { this.manufacturerModelName = name; return this; }
+        public Builder manufacturerModelYear(String year) { this.manufacturerModelYear = year; return this; }
+        public Builder manufacturerSerialNumber(String serial) { this.manufacturerSerialNumber = serial; return this; }
+        public Builder manufacturerNotes(String notes) { this.manufacturerNotes = notes; return this; }
+        public Builder location(String location) { this.location = location; return this; }
+        public Builder voltage(Integer voltage) { this.voltage = voltage; return this; }
+        public Builder frequencyHz(Integer hz) { this.frequencyHz = hz; return this; }
+        public Builder amperage(java.math.BigDecimal amperage) { this.amperage = amperage; return this; }
+        public Builder manufacturedDate(java.time.LocalDate date) { this.manufacturedDate = date; return this; }
+        public Builder registeredAtUtc(Instant registeredAtUtc) { this.registeredAtUtc = registeredAtUtc; return this; }
+        public Builder updatedAtUtc(Instant updatedAtUtc) { this.updatedAtUtc = updatedAtUtc; return this; }
+
+        public Machine build() {
+            Machine machine = new Machine(
+                ipId,
+                worldPinballSerialNumber,
+                displayName,
+                registeredAtUtc != null ? registeredAtUtc : Instant.now(),
+                idempotencyKey != null ? idempotencyKey : UUID.randomUUID(),
+                nonce != null ? nonce : UUID.randomUUID().toString(),
+                machineId != null ? machineId : UUID.randomUUID()
+            );
+            if (status != null) machine.status = status;
+            if (machineNotes != null) machine.machineNotes = machineNotes;
+            if (manufacturer != null) machine.manufacturer = manufacturer;
+            if (manufacturerModelCode != null) machine.manufacturerModelCode = manufacturerModelCode;
+            if (manufacturerModelName != null) machine.manufacturerModelName = manufacturerModelName;
+            if (manufacturerModelYear != null) machine.manufacturerModelYear = manufacturerModelYear;
+            if (manufacturerSerialNumber != null) machine.manufacturerSerialNumber = manufacturerSerialNumber;
+            if (manufacturerNotes != null) machine.manufacturerNotes = manufacturerNotes;
+            if (location != null) machine.location = location;
+            if (voltage != null) machine.voltage = voltage;
+            if (frequencyHz != null) machine.frequencyHz = frequencyHz;
+            if (amperage != null) machine.amperage = amperage;
+            if (manufacturedDate != null) machine.manufacturedDate = manufacturedDate;
+            if (updatedAtUtc != null) machine.updatedAtUtc = updatedAtUtc;
+            return machine;
+        }
+    }
 }

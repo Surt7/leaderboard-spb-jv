@@ -113,4 +113,42 @@ public class IpLicense {
         this.notes = notes != null ? notes.trim() : null;
         this.updatedAtUtc = now;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID ipId;
+        private String name;
+        private String slug;
+        private UUID publisherId;
+        private boolean active = true;
+        private String notes;
+        private Instant createdAtUtc;
+        private Instant updatedAtUtc;
+
+        public Builder ipId(UUID ipId) { this.ipId = ipId; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder slug(String slug) { this.slug = slug; return this; }
+        public Builder publisherId(UUID publisherId) { this.publisherId = publisherId; return this; }
+        public Builder active(boolean active) { this.active = active; return this; }
+        public Builder notes(String notes) { this.notes = notes; return this; }
+        public Builder createdAtUtc(Instant createdAtUtc) { this.createdAtUtc = createdAtUtc; return this; }
+        public Builder updatedAtUtc(Instant updatedAtUtc) { this.updatedAtUtc = updatedAtUtc; return this; }
+
+        public IpLicense build() {
+            IpLicense license = new IpLicense(
+                name,
+                slug,
+                publisherId,
+                active,
+                createdAtUtc != null ? createdAtUtc : Instant.now(),
+                ipId != null ? ipId : UUID.randomUUID()
+            );
+            if (notes != null) license.notes = notes;
+            if (updatedAtUtc != null) license.updatedAtUtc = updatedAtUtc;
+            return license;
+        }
+    }
 }

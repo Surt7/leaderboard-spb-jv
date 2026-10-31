@@ -130,4 +130,56 @@ public class ScoreEntry extends BaseEntity {
         this.validated = false;
         this.validationReason = reason;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID scoreEntryId;
+        private int slotNumber = 1;
+        private UUID sessionId;
+        private UUID userId;
+        private UUID deviceId;
+        private UUID machineId;
+        private UUID ipId;
+        private UUID modeId;
+        private long score;
+        private Instant achievedAtUtc;
+        private boolean validated = true;
+        private String validationReason;
+
+        public Builder scoreEntryId(UUID scoreEntryId) { this.scoreEntryId = scoreEntryId; return this; }
+        public Builder slotNumber(int slotNumber) { this.slotNumber = slotNumber; return this; }
+        public Builder sessionId(UUID sessionId) { this.sessionId = sessionId; return this; }
+        public Builder userId(UUID userId) { this.userId = userId; return this; }
+        public Builder deviceId(UUID deviceId) { this.deviceId = deviceId; return this; }
+        public Builder machineId(UUID machineId) { this.machineId = machineId; return this; }
+        public Builder ipId(UUID ipId) { this.ipId = ipId; return this; }
+        public Builder modeId(UUID modeId) { this.modeId = modeId; return this; }
+        public Builder score(long score) { this.score = score; return this; }
+        public Builder achievedAtUtc(Instant achievedAtUtc) { this.achievedAtUtc = achievedAtUtc; return this; }
+        public Builder validated(boolean validated) { this.validated = validated; return this; }
+        public Builder validationReason(String validationReason) { this.validationReason = validationReason; return this; }
+
+        public ScoreEntry build() {
+            ScoreEntry entry = new ScoreEntry(
+                sessionId,
+                slotNumber,
+                deviceId,
+                machineId,
+                ipId,
+                modeId,
+                score,
+                achievedAtUtc != null ? achievedAtUtc : Instant.now(),
+                userId
+            );
+            if (scoreEntryId != null) {
+                entry.scoreEntryId = scoreEntryId;
+            }
+            entry.validated = validated;
+            entry.validationReason = validationReason;
+            return entry;
+        }
+    }
 }

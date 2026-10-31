@@ -189,4 +189,63 @@ public class EnrollmentToken {
         }
         this.revokedAt = now;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID tokenId;
+        private String tokenHash;
+        private EnrollmentTokenType tokenType = EnrollmentTokenType.DeviceEnroll;
+        private UUID machineId;
+        private UUID deviceId;
+        private String issuedByUserId;
+        private Instant issuedAtUtc;
+        private Instant expiresAtUtc;
+        private Instant consumedAtUtc;
+        private UUID consumedByDeviceId;
+        private Instant revokedAt;
+        private int maxUses = 1;
+        private int usesCount = 0;
+        private String notes;
+        private Integer validityHours;
+
+        public Builder tokenId(UUID tokenId) { this.tokenId = tokenId; return this; }
+        public Builder tokenHash(String tokenHash) { this.tokenHash = tokenHash; return this; }
+        public Builder tokenType(EnrollmentTokenType tokenType) { this.tokenType = tokenType; return this; }
+        public Builder machineId(UUID machineId) { this.machineId = machineId; return this; }
+        public Builder deviceId(UUID deviceId) { this.deviceId = deviceId; return this; }
+        public Builder issuedByUserId(String issuedByUserId) { this.issuedByUserId = issuedByUserId; return this; }
+        public Builder issuedAtUtc(Instant issuedAtUtc) { this.issuedAtUtc = issuedAtUtc; return this; }
+        public Builder expiresAtUtc(Instant expiresAtUtc) { this.expiresAtUtc = expiresAtUtc; return this; }
+        public Builder consumedAtUtc(Instant consumedAtUtc) { this.consumedAtUtc = consumedAtUtc; return this; }
+        public Builder consumedByDeviceId(UUID consumedByDeviceId) { this.consumedByDeviceId = consumedByDeviceId; return this; }
+        public Builder revokedAt(Instant revokedAt) { this.revokedAt = revokedAt; return this; }
+        public Builder maxUses(int maxUses) { this.maxUses = maxUses; return this; }
+        public Builder usesCount(int usesCount) { this.usesCount = usesCount; return this; }
+        public Builder notes(String notes) { this.notes = notes; return this; }
+        public Builder validityHours(Integer validityHours) { this.validityHours = validityHours; return this; }
+
+        public EnrollmentToken build() {
+            EnrollmentToken token = new EnrollmentToken(
+                tokenHash != null ? tokenHash : UUID.randomUUID().toString(),
+                tokenType != null ? tokenType : EnrollmentTokenType.DeviceEnroll,
+                issuedByUserId != null ? issuedByUserId : "system",
+                issuedAtUtc != null ? issuedAtUtc : Instant.now(),
+                expiresAtUtc != null ? expiresAtUtc : Instant.now().plusSeconds(86400),
+                machineId != null ? machineId : UUID.randomUUID()
+            );
+            if (tokenId != null) token.tokenId = tokenId;
+            if (deviceId != null) token.deviceId = deviceId;
+            if (consumedAtUtc != null) token.consumedAtUtc = consumedAtUtc;
+            if (consumedByDeviceId != null) token.consumedByDeviceId = consumedByDeviceId;
+            if (revokedAt != null) token.revokedAt = revokedAt;
+            token.maxUses = maxUses;
+            token.usesCount = usesCount;
+            if (notes != null) token.notes = notes;
+            if (validityHours != null) token.validityHours = validityHours;
+            return token;
+        }
+    }
 }

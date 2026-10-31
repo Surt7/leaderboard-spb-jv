@@ -112,4 +112,42 @@ public class UserProfile {
         this.profilePublic = profilePublic;
         this.updatedAtUtc = now;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID userId;
+        private String displayName;
+        private String initials;
+        private String avatarUrl;
+        private String countryCode;
+        private boolean profilePublic = false;
+        private Instant createdAtUtc;
+        private Instant updatedAtUtc;
+
+        public Builder userId(UUID userId) { this.userId = userId; return this; }
+        public Builder displayName(String displayName) { this.displayName = displayName; return this; }
+        public Builder initials(String initials) { this.initials = initials; return this; }
+        public Builder avatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; return this; }
+        public Builder countryCode(String countryCode) { this.countryCode = countryCode; return this; }
+        public Builder profilePublic(boolean profilePublic) { this.profilePublic = profilePublic; return this; }
+        public Builder createdAtUtc(Instant createdAtUtc) { this.createdAtUtc = createdAtUtc; return this; }
+        public Builder updatedAtUtc(Instant updatedAtUtc) { this.updatedAtUtc = updatedAtUtc; return this; }
+
+        public UserProfile build() {
+            UserProfile profile = new UserProfile(
+                userId != null ? userId : UUID.randomUUID(),
+                displayName != null ? displayName : "No Name",
+                initials != null ? initials : "AAA",
+                avatarUrl,
+                countryCode,
+                profilePublic,
+                createdAtUtc != null ? createdAtUtc : Instant.now()
+            );
+            if (updatedAtUtc != null) profile.updatedAtUtc = updatedAtUtc;
+            return profile;
+        }
+    }
 }

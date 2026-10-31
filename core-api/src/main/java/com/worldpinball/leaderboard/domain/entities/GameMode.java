@@ -98,4 +98,39 @@ public class GameMode {
         this.active = false;
         this.updatedAtUtc = now;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID modeId;
+        private String code;
+        private String name;
+        private String description;
+        private boolean active = true;
+        private Instant createdAtUtc;
+        private Instant updatedAtUtc;
+
+        public Builder modeId(UUID modeId) { this.modeId = modeId; return this; }
+        public Builder code(String code) { this.code = code; return this; }
+        public Builder name(String name) { this.name = name; return this; }
+        public Builder description(String description) { this.description = description; return this; }
+        public Builder active(boolean active) { this.active = active; return this; }
+        public Builder createdAtUtc(Instant createdAtUtc) { this.createdAtUtc = createdAtUtc; return this; }
+        public Builder updatedAtUtc(Instant updatedAtUtc) { this.updatedAtUtc = updatedAtUtc; return this; }
+
+        public GameMode build() {
+            GameMode mode = new GameMode(
+                code,
+                name,
+                description,
+                active,
+                createdAtUtc != null ? createdAtUtc : Instant.now(),
+                modeId != null ? modeId : UUID.randomUUID()
+            );
+            if (updatedAtUtc != null) mode.updatedAtUtc = updatedAtUtc;
+            return mode;
+        }
+    }
 }

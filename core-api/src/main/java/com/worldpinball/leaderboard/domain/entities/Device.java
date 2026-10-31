@@ -198,4 +198,69 @@ public class Device {
         this.ownerUserId = userId;
         this.updatedAtUtc = Instant.now();
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+    public static final class Builder {
+        private UUID deviceId;
+        private UUID ownerUserId;
+        private String serialPhysical;
+        private DeviceStatus status = DeviceStatus.PENDING;
+        private String publicKey;
+        private String publicKeyFingerprint;
+        private String keyType;
+        private String keyAlgorithm;
+        private long lastCounter = 0;
+        private Instant createdAtUtc;
+        private Instant provisionedAtUtc;
+        private Instant activatedAtUtc;
+        private Instant revokedAtUtc;
+        private Instant lastSeenAtUtc;
+        private String clientVersion;
+        private String notes;
+        private Instant updatedAtUtc;
+
+        public Builder deviceId(UUID deviceId) { this.deviceId = deviceId; return this; }
+        public Builder ownerUserId(UUID ownerUserId) { this.ownerUserId = ownerUserId; return this; }
+        public Builder serialPhysical(String serialPhysical) { this.serialPhysical = serialPhysical; return this; }
+        public Builder status(DeviceStatus status) { this.status = status; return this; }
+        public Builder publicKey(String publicKey) { this.publicKey = publicKey; return this; }
+        public Builder publicKeyFingerprint(String fingerprint) { this.publicKeyFingerprint = fingerprint; return this; }
+        public Builder keyType(String keyType) { this.keyType = keyType; return this; }
+        public Builder keyAlgorithm(String keyAlgorithm) { this.keyAlgorithm = keyAlgorithm; return this; }
+        public Builder lastCounter(long counter) { this.lastCounter = counter; return this; }
+        public Builder createdAtUtc(Instant createdAtUtc) { this.createdAtUtc = createdAtUtc; return this; }
+        public Builder provisionedAtUtc(Instant provisionedAtUtc) { this.provisionedAtUtc = provisionedAtUtc; return this; }
+        public Builder activatedAtUtc(Instant activatedAtUtc) { this.activatedAtUtc = activatedAtUtc; return this; }
+        public Builder revokedAtUtc(Instant revokedAtUtc) { this.revokedAtUtc = revokedAtUtc; return this; }
+        public Builder lastSeenAtUtc(Instant lastSeenAtUtc) { this.lastSeenAtUtc = lastSeenAtUtc; return this; }
+        public Builder clientVersion(String clientVersion) { this.clientVersion = clientVersion; return this; }
+        public Builder notes(String notes) { this.notes = notes; return this; }
+        public Builder updatedAtUtc(Instant updatedAtUtc) { this.updatedAtUtc = updatedAtUtc; return this; }
+
+        public Device build() {
+            Device device = new Device(
+                serialPhysical,
+                createdAtUtc != null ? createdAtUtc : Instant.now(),
+                deviceId != null ? deviceId : UUID.randomUUID(),
+                clientVersion,
+                notes
+            );
+            if (ownerUserId != null) device.ownerUserId = ownerUserId;
+            if (status != null) device.status = status;
+            if (publicKey != null) device.publicKey = publicKey;
+            if (publicKeyFingerprint != null) device.publicKeyFingerprint = publicKeyFingerprint;
+            if (keyType != null) device.keyType = keyType;
+            if (keyAlgorithm != null) device.keyAlgorithm = keyAlgorithm;
+            device.lastCounter = lastCounter;
+            if (provisionedAtUtc != null) device.provisionedAtUtc = provisionedAtUtc;
+            if (activatedAtUtc != null) device.activatedAtUtc = activatedAtUtc;
+            if (revokedAtUtc != null) device.revokedAtUtc = revokedAtUtc;
+            if (lastSeenAtUtc != null) device.lastSeenAtUtc = lastSeenAtUtc;
+            if (updatedAtUtc != null) device.updatedAtUtc = updatedAtUtc;
+            return device;
+        }
+    }
 }
