@@ -119,6 +119,45 @@ class SessionsControllerTest {
     }
 
     @Test
+    @DisplayName("CreateGameSession with machine signature serializes modeCode and clientVersion without deviceId")
+    void createGameSession_withMachineSignature_serializesExpectedCanonicalBody() {
+        UUID sessionId = UUID.randomUUID();
+        UUID machineId = UUID.randomUUID();
+        UUID deviceId = UUID.randomUUID();
+        Instant now = Instant.now();
+
+        jakarta.servlet.http.HttpServletRequest httpRequest = org.mockito.Mockito.mock(jakarta.servlet.http.HttpServletRequest.class);
+        when(httpRequest.getMethod()).thenReturn("POST");
+        when(httpRequest.getRequestURI()).thenReturn("/api/v1/sessions/create");
+
+        when(machineAuthService.validate(any(com.worldpinball.leaderboard.application.security.cryptography.MachineAuthContext.class)))
+                .thenAnswer(invocation -> {
+                    com.worldpinball.leaderboard.application.security.cryptography.MachineAuthContext ctx = invocation.getArgument(0);
+                    assertThat(ctx.rawBody()).isEqualTo("{\"modeCode\":\"classic\",\"clientVersion\":\"1.0.0\"}");
+                    return new com.worldpinball.leaderboard.application.security.cryptography.MachineAuthResult.Success(
+                            machineId, deviceId, "nonce-1234567890123456", 1758110400L
+                    );
+                });
+
+        when(createGameSessionHandler.handle(any(CreateGameSessionCommand.class)))
+                .thenReturn(new CreateGameSessionResult.Success(sessionId, "nonce-123", now));
+
+        CreateGameSessionRequest request = new CreateGameSessionRequest("classic", "1.0.0");
+        ResponseEntity<?> response = sut.createGameSession(
+                request,
+                deviceId.toString(),
+                "1758110400",
+                "nonce-1234567890123456",
+                "mock-sig",
+                httpRequest
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        CreateGameSessionResponse body = (CreateGameSessionResponse) response.getBody();
+        assertThat(body.sessionId()).isEqualTo(sessionId);
+    }
+
+    @Test
     @DisplayName("GetLobby returns 200 OK when session exists")
     void getLobby_whenSessionExists_shouldReturnOk() {
         UUID sessionId = UUID.randomUUID();

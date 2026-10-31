@@ -70,7 +70,7 @@ public class SessionsController {
         if (signatureHeader != null && !signatureHeader.isBlank()) {
             String rawBody;
             try {
-                rawBody = objectMapper.writeValueAsString(request);
+                rawBody = objectMapper.writeValueAsString(new CreateGameSessionRequest(null, request.modeCode(), request.clientVersion()));
             } catch (Exception e) {
                 rawBody = "{}";
             }

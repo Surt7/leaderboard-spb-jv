@@ -1,15 +1,24 @@
 package com.worldpinball.leaderboard.api.dtos;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
+
 import java.util.UUID;
 
 public final class SessionContracts {
     private SessionContracts() {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"modeCode", "clientVersion"})
     public record CreateGameSessionRequest(
         UUID deviceId,
         String modeCode,
         String clientVersion
-    ) {}
+    ) {
+        public CreateGameSessionRequest(String modeCode, String clientVersion) {
+            this(null, modeCode, clientVersion);
+        }
+    }
 
     public record CreateGameSessionResponse(
         UUID sessionId,
@@ -56,11 +65,14 @@ public final class SessionContracts {
         long score
     ) {}
 
+    @JsonPropertyOrder({"slotNumber", "score"})
     public record SlotScoreRequest(
         int slotNumber,
         long score
     ) {}
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @JsonPropertyOrder({"deviceId", "scores"})
     public record SubmitScoreRequest(
         UUID deviceId,
         java.util.List<SlotScoreRequest> scores
