@@ -40,6 +40,15 @@ public class AuthController {
         return Mono.just(ResponseEntity.ok("Healthy"));
     }
 
+    @GetMapping("/health")
+    public Mono<ResponseEntity<Map<String, Object>>> health() {
+        return Mono.just(ResponseEntity.ok(Map.of(
+                "status", "Healthy",
+                "service", "WorldPinball.Bff",
+                "timestamp", java.time.Instant.now().toString()
+        )));
+    }
+
     @GetMapping("/api/auth/login")
     public Mono<Void> login(@RequestParam(value = "returnUrl", required = false) String returnUrl,
                             ServerWebExchange exchange) {

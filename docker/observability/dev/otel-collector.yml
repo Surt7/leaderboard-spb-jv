@@ -23,6 +23,11 @@ exporters:
   otlphttp/loki:
     endpoint: http://loki:3100/otlp
 
+  otlphttp/seq:
+    endpoint: http://seq:80/ingest/otlp/v1/logs
+    tls:
+      insecure: true
+
   debug:
     verbosity: basic
 
@@ -41,4 +46,4 @@ service:
     logs:
       receivers: [otlp]
       processors: [batch]
-      exporters: [otlphttp/loki, debug]
+      exporters: [otlphttp/loki, otlphttp/seq, debug]

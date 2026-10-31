@@ -38,6 +38,17 @@ class AuthControllerTest {
     }
 
     @Test
+    void health_shouldReturn200Healthy() {
+        webTestClient.get()
+            .uri("/health")
+            .exchange()
+            .expectStatus().isOk()
+            .expectBody()
+            .jsonPath("$.status").isEqualTo("Healthy")
+            .jsonPath("$.service").isEqualTo("WorldPinball.Bff");
+    }
+
+    @Test
     void login_shouldRedirectToOAuth2Keycloak() {
         webTestClient.get()
             .uri("/api/auth/login?returnUrl=/dashboard")
